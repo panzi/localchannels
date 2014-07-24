@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html;charste=UTF-8"/>
+	<title>local channels demo</title>
+	<script type="text/javascript" src="localchannels.js"></script>
+	<style type="text/css">
+#props,
+#out {
+	list-style: none;
+}
+#props label {
+	display: inline-block;
+	width: 200px;
+	margin-right: 10px;
+}
+#props input[type=text] {
+	width: 200px;
+}
+#out li .head:before {
+	content: "[";
+}
+#out li .head:after {
+	content: "]";
+}
+#out li .source {
+	font-weight: bold;
+	margin-right: 10px;
+}
+#out li .type {
+}
+	</style>
+	<script type="text/javascript">
+	// <![CDATA[
+	var observe = window.addEventListener ?
+		function (context, event, handler) {
+			context.addEventListener(event, handler, false);
+		} :
+		function (context, event, handler) {
+			context.attachEvent('on'+event,
+				handler.__localChannels_wrapper || (handler.__localChannels_wrapper = function () {
+					handler.call(this,window.event);
+				}));
+		};
+
+	function init () {
+		var idEl = document.getElementById("channelid");
+		var originEl = document.getElementById("origin");
+		var targetEl = document.getElementById("target");
+		var outEl = document.getElementById("out");
+
+		document.title = "Channel "+localChannels.selfId();
+		idEl.appendChild(document.createTextNode(localChannels.selfId()));
+		originEl.appendChild(document.createTextNode(location.protocol+"//"+location.host));
+
+		var channels = localChannels.getChannels();
+		for (var i = 0; i < channels.length; ++ i) {
+			var channel = channels[i];
+			addTarget(channel);
+		}
+		channels = null;
+
+		observe(window, "localchannels:connect", function (event) {
+			addTarget(event.source);
+			logEvent(event);
+		});
+
+		observe(window, "localchannels:disconnect", function (event) {
+			var el = document.getElementById("target_"+event.source.id());
+			if (el) {
+				el.parentNode.removeChild(el);
+			}
+			logEvent(event);
+		});
+
+		observe(window, "localchannels:message", logEvent);
+		observe(window, "localchannels:propertieschange", logEvent);
+
+		function addTarget (channel) {
+			var id = channel.id();
+			var el = document.createElement("option");
+			el.id = "target_"+id;
+			el.value = id;
+			el.appendChild(document.createTextNode("Channel "+id));
+			targetEl.appendChild(el);
+		}
+
+		function logEvent (event) {
+			var id = event.source.id();
+			var type = event.type||event.typeName;
+			var itemEl = document.createElement('li');
+			var srcEl = document.createElement('span');
+			var typeEl = document.createElement('span');
+			var headEl = document.createElement('span');
+			headEl.className = "head";
+			srcEl.className = "source";
+			srcEl.appendChild(document.createTextNode("Channel "+id));
+			typeEl.className = "type";
+			typeEl.appendChild(document.createTextNode(type.replace(/^localchannels:/,'')));
+			headEl.appendChild(srcEl);
+			headEl.appendChild(typeEl);
+			itemEl.appendChild(headEl);
+
+			if (type === "localchannels:message") {
+				var msgEl = document.createElement("pre");
+				msgEl.className = "body message";
+				msgEl.appendChild(document.createTextNode(event.data));
+				itemEl.appendChild(msgEl);
+			}
+			else if (type === "localchannels:propertieschange") {
+				var propsEl = document.createElement("pre");
+				propsEl.className = "body propertieschange";
+				propsEl.appendChild(document.createTextNode(JSON.stringify(event.properties,null,4)));
+				itemEl.appendChild(propsEl);
+			}
+
+			outEl.appendChild(itemEl);
+		}
+	}
+	
+	function sendMessage () {
+		var message = document.getElementById("message").value;
+		var targetId = document.getElementById("target").value;
+		if (targetId === "broadcast") {
+			localChannels.postMessage(message);
+		}
+		else {
+			var channel = localChannels.getChannel(targetId);
+			if (channel) {
+				channel.postMessage(message);
+			}
+			else {
+				alert("Channel "+targetEl.value+" not in known channel list!");
+			}
+		}
+	}
+
+	function addProp () {
+		var name = prompt("Property Name:");
+		if (name !== null) {
+			if (document.getElementById('prop_'+name)) {
+				alert("Property with name »"+name+"« already exists.");
+				return;
+			}
+			var propsEl = document.getElementById('props');
+			var propEl = document.createElement('li');
+			var nameEl = document.createElement('label');
+			var valueEl = document.createElement('input');
+			var remEl = document.createElement('button');
+
+			nameEl.htmlFor = valueEl.id = "prop_"+name;
+			nameEl.appendChild(document.createTextNode(name));
+			valueEl.className = 'property';
+			valueEl.type = 'text';
+			valueEl.name = name;
+			valueEl.placeholder = 'value';
+			remEl.type = 'button';
+			remEl.innerHTML = '&times;';
+			remEl.title = 'Remove Property';
+			remEl.onclick = function () {
+				localChannels.removeProperty(name);
+				propsEl.removeChild(propEl);
+			};
+
+			propEl.appendChild(nameEl);
+			propEl.appendChild(valueEl);
+			propEl.appendChild(remEl);
+			propsEl.appendChild(propEl);
+
+			valueEl.focus();
+		}
+	}
+
+	function updateProps () {
+		var propEls = document.querySelectorAll("#props .property");
+		var props = {};
+		for (var i = 0; i < propEls.length; ++ i) {
+			var propEl = propEls[i];
+			props[propEl.name] = propEl.value;
+		}
+		localChannels.setProperties(props);
+	}
+	// ]]>
+	</script>
+</head>
+<body onload="init();">
+	<h1>Channel <span id="channelid"></span> (<span id="origin"></span>)</h1>
+	<form action="javascript:;" onsubmit="sendMessage(); return false;">
+		<select id="target">
+			<option value="broadcast">Broadcast</option>
+		</select>
+		<input type="text" value="" id="message" placeholder="message"/>
+		<button type="submit">Send Message</button>
+	</form>
+
+	<h2>Properties</h2>
+	<form action="javascript:;" onsubmit="updateProps(); return false;">
+		<ul id="props"></ul>
+		<button type="button" onclick="addProp();">Add Property</button>
+		<button type="submit">Update Properties</button>
+	</form>
+
+	<h2>Event Log</h2>
+	<ul id="out"></ul>
+</body>
+</html>
