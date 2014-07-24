@@ -32,17 +32,6 @@
 	</style>
 	<script type="text/javascript">
 	// <![CDATA[
-	var observe = window.addEventListener ?
-		function (context, event, handler) {
-			context.addEventListener(event, handler, false);
-		} :
-		function (context, event, handler) {
-			context.attachEvent('on'+event,
-				handler.__localChannels_wrapper || (handler.__localChannels_wrapper = function () {
-					handler.call(this,window.event);
-				}));
-		};
-
 	function init () {
 		var idEl = document.getElementById("channelid");
 		var originEl = document.getElementById("origin");
@@ -60,12 +49,12 @@
 		}
 		channels = null;
 
-		observe(window, "localchannels:connect", function (event) {
+		localChannels.addEventListener("connect", function (event) {
 			addTarget(event.source);
 			logEvent(event);
 		});
 
-		observe(window, "localchannels:disconnect", function (event) {
+		localChannels.addEventListener("disconnect", function (event) {
 			var el = document.getElementById("target_"+event.source.id());
 			if (el) {
 				el.parentNode.removeChild(el);
@@ -73,8 +62,8 @@
 			logEvent(event);
 		});
 
-		observe(window, "localchannels:message", logEvent);
-		observe(window, "localchannels:propertieschange", logEvent);
+		localChannels.addEventListener("message", logEvent);
+		localChannels.addEventListener("propertieschange", logEvent);
 
 		function addTarget (channel) {
 			var id = channel.id();
@@ -87,7 +76,7 @@
 
 		function logEvent (event) {
 			var id = event.source.id();
-			var type = event.type||event.typeName;
+			var type = event.type;
 			var itemEl = document.createElement('li');
 			var srcEl = document.createElement('span');
 			var typeEl = document.createElement('span');
@@ -101,13 +90,13 @@
 			headEl.appendChild(typeEl);
 			itemEl.appendChild(headEl);
 
-			if (type === "localchannels:message") {
+			if (type === "message") {
 				var msgEl = document.createElement("pre");
 				msgEl.className = "body message";
 				msgEl.appendChild(document.createTextNode(event.data));
 				itemEl.appendChild(msgEl);
 			}
-			else if (type === "localchannels:propertieschange") {
+			else if (type === "propertieschange") {
 				var propsEl = document.createElement("pre");
 				propsEl.className = "body propertieschange";
 				propsEl.appendChild(document.createTextNode(JSON.stringify(event.properties,null,4)));
@@ -136,7 +125,7 @@
 	}
 
 	function addProp () {
-		var name = prompt("Property Name:");
+		var name = prompt("Property Name:","");
 		if (name !== null) {
 			if (document.getElementById('prop_'+name)) {
 				alert("Property with name »"+name+"« already exists.");
@@ -154,9 +143,9 @@
 			valueEl.type = 'text';
 			valueEl.name = name;
 			valueEl.placeholder = 'value';
-			remEl.type = 'button';
+			remEl.setAttribute('type', 'button');
+			remEl.setAttribute('title', 'Remove Property');
 			remEl.innerHTML = '&times;';
-			remEl.title = 'Remove Property';
 			remEl.onclick = function () {
 				localChannels.removeProperty(name);
 				propsEl.removeChild(propEl);

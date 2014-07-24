@@ -46,10 +46,57 @@ window.localChannels = (function () {
 	var selfId;
 	var channels;
 	var localChannels;
+	var notifyEvent = 'onstorage' in window ? function (type) { /* done via event.key in storage event handler */ } :
+		function (type) {
+			/* IE8 has no event.{key|newValue} so this manually sends such messages to all channels */
+			localChannels.__postMessage({source: selfId, type: type});
+		};
+	
+	function EventTarget () {}
+
+	EventTarget.prototype = {
+		addEventListener: function (event, handler) {
+			if (!this.__event_target_handlers) {
+				this.__event_target_handlers = {};
+			}
+			if (has(this.__event_target_handlers,event)) {
+				this.__event_target_handlers[event].push(handler);
+			}
+			else {
+				this.__event_target_handlers[event] = [handler];
+			}
+		},
+		removeEventListener: function (event, handler) {
+			if (!__event_target_handlers) return;
+			if (has(this.__event_target_handlers,event)) {
+				var handlers = this.__event_target_handlers[event];
+				var i = handlers.indexOf(handler);
+				if (i >= 0) {
+					hadnlers.splice(i,1);
+				}
+			}
+		},
+		dispatchEvent: function (event) {
+			if (!this.__event_target_handlers) return;
+			if (has(this.__event_target_handlers,event.type)) {
+				var handlers = this.__event_target_handlers[event.type];
+				for (var i = 0; i < handlers.length; ++ i) {
+					try {
+						handlers[i].call(this,event);
+					}
+					catch (e) {
+						if (window.console) {
+							console.error(e);
+						}
+					}
+				}
+			}
+		}
+	}
 	
 	function LocalChannels () {}
 
-	LocalChannels.prototype = {
+	LocalChannels.prototype = extend(new EventTarget(), {
 		MAX_CHANNEL_ID: MAX_CHANNEL_ID,
 		selfId: function () {
 			return selfId;
@@ -65,6 +112,7 @@ window.localChannels = (function () {
 		setProperties: function (properties) {
 			var key = 'localChannels.channel.'+selfId+'.properties';
 			storage.setItem(key, JSON.stringify(properties));
+			notifyEvent('propertieschange');
 		},
 		setProperty: function (name, value) {
 			var key = 'localChannels.channel.'+selfId+'.properties';
@@ -72,6 +120,7 @@ window.localChannels = (function () {
 			props = props ? JSON.parse(props) : {};
 			props[name] = value;
 			storage.setItem(key, JSON.stringify(props));
+			notifyEvent('propertieschange');
 		},
 		removeProperty: function (name, value) {
 			var key = 'localChannels.channel.'+selfId+'.properties';
@@ -79,6 +128,7 @@ window.localChannels = (function () {
 			props = props ? JSON.parse(props) : {};
 			delete props[name];
 			storage.setItem(key, JSON.stringify(props));
+			notifyEvent('propertieschange');
 		},
 		getChannel: function (id) {
 			return channels[id]||null;
@@ -91,20 +141,24 @@ window.localChannels = (function () {
 			return channelList;
 		},
 		// broadcast to all channels
-		postMessage: function (message) {
+		postMessage: 'onstorage' in window ? function (data) {
+			this.__postMessage({source: selfId, data: data});
+		} : function (data) {
+			this.__postMessage({source: selfId, data: data, type: 'message'});
+		},
+		__postMessage: function (message) {
 			for (var channelId in channels) {
 				var channel = channels[channelId];
-				channel.postMessage(message);
+				channel.__postMessage(message);
 			}
 		}
-	};
+	});
 	
 	function Channel (id) {
 		this.__id = id;
-		this.__handlers = {};
 	}
 
-	Channel.prototype = {
+	Channel.prototype = extend(new EventTarget(), {
 		id: function () {
 			return this.__id;
 		},
@@ -115,117 +169,89 @@ window.localChannels = (function () {
 		getProperty: function (name) {
 			return this.getProperty()[name];
 		},
-		postMessage: function (data) {
+		postMessage: 'onstorage' in window ? function (data) {
+			this.__postMessage({source: selfId, data: data});
+		} : function (data) {
+			this.__postMessage({source: selfId, data: data, type: 'message'});
+		},
+		__postMessage: function (message) {
 			var key = 'localChannels.channel.'+this.__id+'.queue';
 			var queue = storage.getItem(key);
 			queue = queue ? JSON.parse(queue) : [];
-			queue.push({source: selfId, data: data});
+			queue.push(message);
 			storage.setItem(key, JSON.stringify(queue));
-		},
-		addEventListener: function (event, handler) {
-			if (has(this.__handlers,event)) {
-				this.__handlers[event].push(handler);
-			}
-			else {
-				this.__handlers[event] = [handler];
-			}
-		},
-		removeEventListener: function (event, handler) {
-			if (has(this.__handlers,event)) {
-				var handlers = this.__handlers[event];
-				var i = handlers.indexOf(handler);
-				if (i >= 0) {
-					hadnlers.splice(i,1);
-				}
-			}
-		},
-		dispatchEvent: function (event) {
-			var type = event.type||event.eventType;
-			if (has(this.__handlers,event)) {
-				var handlers = this.__handlers[event];
-				for (var i = 0; i < handlers.length; ++ i) {
-					try {
-						handlers[i].call(this,event);
-					}
-					catch (e) {
-						if (window.console) {
-							console.error(e);
-						}
-					}
-				}
-			}
 		}
-	};
+	});
 
 	init();
 
-	observe('onstorage' in window ? window : document, "storage", function (event) {
-		// Firefox Bug: always false!
-		// and in IE8 event.storageArea is undefined
-		// TODO: IE8 has no event.{key|oldValue|newValue|storageArea}
-//		if (event.storageArea !== storage) {
-//			return;
-//		}
-		var m;
-		if (event.key === "localChannels.channels") {
-			var channelIds = JSON.parse(event.newValue);
-			var newChannels = {};
-			for (var i = 0; i < channelIds.length; ++ i) {
-				var channelId = channelIds[i];
-				if (channelId !== selfId) {
-					if (has(channels, channelId)) {
-						newChannels[channelId] = channels[channelId];
-					}
-					else {
-						var channel = newChannels[channelId] = new Channel(channelId);
-						var newEvent = createEvent('localchannels:connect',{source:channel});
-						dispatchEvent(window, newEvent);
-					}
-				}
+	if ('onstorage' in window) {
+		observe(window, "storage", function (event) {
+			// Firefox Bug: always false!
+			// and in IE8 event.storageArea is undefined
+			// TODO: IE8 has no event.{key|oldValue|newValue|storageArea}
+//			if (event.storageArea !== storage) {
+//				return;
+//			}
+			var m;
+			if (event.key === "localChannels.channels") {
+				updateChannels(JSON.parse(event.newValue));
 			}
-			for (var channelId in channels) {
-				if (!has(newChannels, channelId)) {
-					var channel = channels[channelId];
-					var newEvent = createEvent('localchannels:disconnect',{source:channel});
-					dispatchEvent(window, newEvent);
-				}
-			}
-			channels = newChannels;
-		}
-		else if ((m = /^localChannels\.channel\.(\d+)\.([_a-z0-9]+)$/i.exec(event.key))) {
-			var channelId = Number(m[1]);
-			var field = m[2];
+			else if ((m = /^localChannels\.channel\.(\d+)\.([_a-zA-Z0-9]+)$/.exec(event.key))) {
+				var channelId = Number(m[1]);
+				var field = m[2];
 
-			switch (field) {
-			case 'properties':
-				if (event.newValue) {
-					var channel = channels[channelId];
-					var properties = JSON.parse(event.newValue);
-					var newEvent = createEvent('localchannels:propertieschange',{source:channel,properties:properties});
-					channel.dispatchEvent(newEvent);
-					if (!chanceled(newEvent)) {
-						dispatchEvent(window, newEvent);
+				switch (field) {
+				case 'properties':
+					if (event.newValue) {
+						updateProperties(channelId, JSON.parse(event.newValue));
 					}
-				}
-				break;
+					break;
 
-			case 'queue':
-				if (event.newValue && selfId === channelId) {
-					var queue = JSON.parse(event.newValue);
-					// removeItem does not work here for IE
-					event.storageArea.setItem(event.key,"[]");
-						
-					for (var i = 0; i < queue.length; ++ i) {
-						var message = queue[i];
-						var source = channels[message.source];
-						var newEvent = createEvent('localchannels:message',{source:source,data:message.data});
-						dispatchEvent(window, newEvent);
+				case 'queue':
+					if (event.newValue && selfId === channelId) {
+						processQueue(JSON.parse(event.newValue));
+					}
+					break;
+				}
+			}
+		});
+	}
+	else if ('onstorage' in document) {
+		// IE8 workaround
+		observe(document, "storage", function () {
+			// IE8 has not event.{key|newValue|oldValue|storageArea} properties,
+			// so I have to explicitely send all events to all channels.
+			var key = "localChannels.channel."+selfId+".queue";
+			var queue = storage.getItem(key);
+			queue = queue ? JSON.parse(queue) : [];
+			storage.setItem(key,"[]");
+
+			for (var i = 0; i < queue.length; ++ i) {
+				try {
+					var message = queue[i];
+					switch (message.type) {
+					case "message":
+						processMessage(message);
+						break;
+
+					case "propertieschange":
+						var properties = storage.getItem("localChannels.channel."+message.source+".properties");
+						updateProperties(message.source, properties ? JSON.parse(properties) : {});
+						break;
+
+					case "channelschange":
+						var channelIds = storage.getItem("localChannels.channels");
+						updateChannels(channelIds ? JSON.parse(channelIds) : []);
+						break;
 					}
 				}
-				break;
+				catch (e) {
+					if (window.console) console.error(e);
+				}
 			}
-		}
-	});
+		});
+	}
 
 	observe(window, "unload", function (event) {
 		var channelIds = storage.getItem("localChannels.channels");
@@ -237,13 +263,10 @@ window.localChannels = (function () {
 				storage.setItem("localChannels.channels", JSON.stringify(channelIds));
 				storage.removeItem("localChannels.channel."+selfId+".queue");
 				storage.removeItem("localChannels.channel."+selfId+".properties");
+				notifyEvent('channelschange');
 			}
 		}
 	});
-
-	function chanceled (event) {
-		return 'cancelBubble' in event ? event.cancelBubble : event.returnValue === false;
-	}
 
 	function init () {
 		localChannels = new LocalChannels();
@@ -278,38 +301,99 @@ window.localChannels = (function () {
 		selfId = id;
 		channelIds.push(id);
 		storage.setItem("localChannels.channels", JSON.stringify(channelIds));
+		notifyEvent('channelschange');
 	}
 
-	function createEvent (type, properties) {
-		var event;
-
-		if (document.createEvent) {
-			event = document.createEvent("Event");
-			event.initEvent(type, true, true);
+	function extend (obj, other) {
+		for (var key in other) {
+			obj[key] = other[key];
 		}
-		else if (document.createEventObject) {
-			event = document.createEventObject();
-			event.eventType = type;
-		}
-		else {
-			event = new CustomEvent(type, {bubbles: true, cancelable: true});
-		}
-
-		for (var key in properties) {
-			event[key] = properties[key];
-		}
-
-		return event;
+		return obj;
 	}
 
-	function dispatchEvent (context, event) {
-		if (context.dispatchEvent) {
-			context.dispatchEvent(event);
+	function updateChannels (channelIds) {
+		var newChannels = {};
+		for (var i = 0; i < channelIds.length; ++ i) {
+			var channelId = channelIds[i];
+			if (channelId !== selfId) {
+				if (has(channels, channelId)) {
+					newChannels[channelId] = channels[channelId];
+				}
+				else {
+					var channel = newChannels[channelId] = new Channel(channelId);
+					localChannels.dispatchEvent(new ConnectEvent(channel));
+				}
+			}
 		}
-		else {
-			context.fireEvent("on"+event.eventType, event);
+		for (var channelId in channels) {
+			if (!has(newChannels, channelId)) {
+				var channel = channels[channelId];
+				localChannels.dispatchEvent(new DisconnectEvent(channel));
+			}
+		}
+		channels = newChannels;
+	}
+
+	function updateProperties (channelId, properties) {
+		var channel = channels[channelId];
+		var event = new PropertiesChangeEvent(channel,properties);
+		channel.dispatchEvent(event);
+		localChannels.dispatchEvent(event);
+	}
+
+	function processQueue (queue) {
+		// removeItem does not work here for IE
+		storage.setItem("localChannels.channel."+selfId+".queue","[]");
+
+		for (var i = 0; i < queue.length; ++ i) {
+			try {
+				var message = queue[i];
+				processMessage(message);
+			}
+			catch (e) {
+				if (window.console) console.error(e);
+			}
 		}
 	}
+
+	function processMessage (message) {
+		var channel = channels[message.source];
+		var event = new MessageEvent(channel,message.data);
+		localChannels.dispatchEvent(event);
+	}
+
+	function Event () {}
+
+	Event.prototype = {
+		initEvent: function (type, source) {
+			this.type      = type;
+			this.source    = source;
+			this.timeStamp = +new Date();
+		}
+	};
+
+	function ConnectEvent (source) {
+		this.initEvent('connect', source);
+	}
+
+	function DisconnectEvent (source) {
+		this.initEvent('disconnect', source);
+	}
+
+	function PropertiesChangeEvent (source, properties) {
+		this.initEvent('propertieschange', source);
+		this.properties = properties;
+	}
+
+	function MessageEvent (source, data) {
+		this.initEvent('message', source);
+		this.data = data;
+	}
+
+	ConnectEvent.prototype          = new Event();
+	DisconnectEvent.prototype       = new Event();
+	PropertiesChangeEvent.prototype = new Event();
+	MessageEvent.prototype          = new Event();
 
 	return localChannels;
 })();
