@@ -3,9 +3,9 @@ window.localChannels = (function () {
 
 	// TODO: maybe also list self in channels?
 	//       maybe allow to create multiple channels and not create one automatically? but then what would be the source channel?
-	//       maybe also dispatch properties change events to self (this window)?
+	//       maybe also dispatch properties change events to self?
 	var MAX_CHANNEL_ID = 4294967296; /* max unsinged 32bit integer */
-	var storage = localStorage;      /* or use session storage? */
+	var storage = localStorage;
 
 	if (!Array.prototype.indexOf) {
 		Array.prototype.indexOf = function (value) {
@@ -400,7 +400,7 @@ window.localChannels = (function () {
 	}
 
 	function handleUnload (event) {
-		localStorage.disconnect();
+		localChannels.disconnect();
 	}
 
 	function processMessage (message) {
