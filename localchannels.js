@@ -144,16 +144,33 @@ window.localChannels = (function () {
 			return channelList;
 		},
 		// broadcast to all channels
-		postMessage: 'onstorage' in window ? function (data) {
-			this.__postMessage({source: selfId, data: data});
+		postMessage: 'onstorage' in window ? function (data, filter) {
+			this.__postMessage({source: selfId, data: data}, filter);
 		} : function (data) {
-			this.__postMessage({source: selfId, data: data, type: 'message'});
+			this.__postMessage({source: selfId, data: data, type: 'message'}, filter);
 		},
-		__postMessage: function (message) {
+		__postMessage: function (message, filter) {
 			if (selfId === null) throw new TypeError("local channel is not connected");
-			for (var channelId in channels) {
-				var channel = channels[channelId];
-				channel.__postMessage(message);
+			if (filter) {
+				for (var channelId in channels) {
+					var channel = channels[channelId];
+					var properties = channel.getProperties();
+					var matches = true;
+					for (var key in filter) {
+						if (properties[key] !== filter[key]) {
+							matches = false;
+							break;
+						}
+					}
+					if (matches) {
+						channel.__postMessage(message);
+					}
+				}
+			}
+			else {
+				for (var channelId in channels) {
+					channels[channelId].__postMessage(message);
+				}
 			}
 		},
 		connected: function () {
@@ -206,6 +223,8 @@ window.localChannels = (function () {
 			}
 
 			observe(window, "unload", handleUnload);
+
+			return id;
 		},
 		disconnect: function () {
 			if (selfId === null) throw new TypeError("local channel is not connected");
