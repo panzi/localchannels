@@ -27,6 +27,9 @@
 	font-weight: bold;
 	margin-right: 10px;
 }
+h2 button {
+	vertical-align: text-bottom;
+}
 	</style>
 	<script type="text/javascript">
 	// <![CDATA[
@@ -188,7 +191,7 @@
 		<button type="submit">Update Properties</button>
 	</form>
 
-	<h2>Event Log</h2>
+	<h2>Event Log <button type="button" onclick="document.getElementById('out').innerHTML='';">Clear</button></h2>
 	<ul id="out"></ul>
 </body>
 </html>
