@@ -43,9 +43,6 @@ window.localChannels = (function () {
 			context.detachEvent('on'+event, handler.__localChannels_wrapper);
 		};
 
-	var selfId;
-	var channels;
-	var localChannels;
 	var notifyEvent = 'onstorage' in window ? function (type) { /* done via event.key in storage event handler */ } :
 		function (type) {
 			/* IE8 has no event.{key|newValue} so this manually sends such messages to all channels */
@@ -102,6 +99,7 @@ window.localChannels = (function () {
 			return selfId;
 		},
 		getProperties: function () {
+			if (selfId === null) throw new TypeError("local channel is not connected");
 			var key = 'localChannels.channel.'+selfId+'.properties';
 			var props = storage.getItem(key);
 			return props ? JSON.parse(props) : {};
@@ -110,11 +108,13 @@ window.localChannels = (function () {
 			return this.getProperties()[name];
 		},
 		setProperties: function (properties) {
+			if (selfId === null) throw new TypeError("local channel is not connected");
 			var key = 'localChannels.channel.'+selfId+'.properties';
 			storage.setItem(key, JSON.stringify(properties));
 			notifyEvent('propertieschange');
 		},
 		setProperty: function (name, value) {
+			if (selfId === null) throw new TypeError("local channel is not connected");
 			var key = 'localChannels.channel.'+selfId+'.properties';
 			var props = storage.getItem(key);
 			props = props ? JSON.parse(props) : {};
@@ -123,6 +123,7 @@ window.localChannels = (function () {
 			notifyEvent('propertieschange');
 		},
 		removeProperty: function (name, value) {
+			if (selfId === null) throw new TypeError("local channel is not connected");
 			var key = 'localChannels.channel.'+selfId+'.properties';
 			var props = storage.getItem(key);
 			props = props ? JSON.parse(props) : {};
@@ -131,9 +132,11 @@ window.localChannels = (function () {
 			notifyEvent('propertieschange');
 		},
 		getChannel: function (id) {
+			if (selfId === null) throw new TypeError("local channel is not connected");
 			return channels[id]||null;
 		},
 		getChannels: function () {
+			if (selfId === null) throw new TypeError("local channel is not connected");
 			var channelList = [];
 			for (var channelId in channels) {
 				channelList.push(channels[channelId]);
@@ -147,10 +150,88 @@ window.localChannels = (function () {
 			this.__postMessage({source: selfId, data: data, type: 'message'});
 		},
 		__postMessage: function (message) {
+			if (selfId === null) throw new TypeError("local channel is not connected");
 			for (var channelId in channels) {
 				var channel = channels[channelId];
 				channel.__postMessage(message);
 			}
+		},
+		connected: function () {
+			return selfId !== null;
+		},
+		connect: function (properties) {
+			if (selfId !== null) throw new TypeError("local channel is already connected");
+
+			var channelIds = storage.getItem("localChannels.channels");
+			try {
+				channelIds = channelIds ? JSON.parse(channelIds) : [];
+			}
+			catch (e) {
+				channelIds = [];
+				if (window.console) console.error(e);
+			}
+			channels = {};
+			for (var i = 0; i < channelIds.length; ++ i) {
+				var channelId = channelIds[i];
+				channels[channelId] = new Channel(channelId);
+			}
+			channelIds.sort();
+			var maxId = channelIds.length > 0 ? channelIds[channelIds.length - 1] : -1;
+			var id;
+			if (maxId < MAX_CHANNEL_ID) {
+				id = maxId + 1;
+			}
+			else {
+				id = 0; // wrap around
+				while (id <= MAX_CHANNEL_ID && has(channels, id)) { ++ id; }
+				if (id === MAX_CHANNEL_ID) {
+					// the browser should run out of memory before this happens anyway
+					// also it should take for ever to reach this point
+					throw new TypeError("too many open channels");
+				}
+			}
+			selfId = id;
+			channelIds.push(id);
+			storage.setItem("localChannels.channels", JSON.stringify(channelIds));
+			notifyEvent('channelschange');
+			if (properties) {
+				this.setProperties(properties);
+			}
+
+			if ('onstorage' in window) {
+				observe(window, "storage", handleStorage);
+			}
+			else if ('onstorage' in document) {
+				observe(document, "storage", handleStorageIE8);
+			}
+
+			observe(window, "unload", handleUnload);
+		},
+		disconnect: function () {
+			if (selfId === null) throw new TypeError("local channel is not connected");
+
+			var channelIds = storage.getItem("localChannels.channels");
+			if (channelIds) {
+				channelIds = JSON.parse(channelIds);
+				var i = channelIds.indexOf(selfId);
+				if (i >= 0) {
+					channelIds.splice(i,1);
+					storage.setItem("localChannels.channels", JSON.stringify(channelIds));
+					storage.removeItem("localChannels.channel."+selfId+".queue");
+					storage.removeItem("localChannels.channel."+selfId+".properties");
+					notifyEvent('channelschange');
+				}
+			}
+			selfId = null;
+
+			if ('onstorage' in window) {
+				unobserve(window, "storage", handleStorage);
+			}
+			else if ('onstorage' in document) {
+				unobserve(document, "storage", handleStorageIE8);
+			}
+
+			unobserve(window, "unload", handleUnload);
 		}
 	});
 	
@@ -182,127 +263,6 @@ window.localChannels = (function () {
 			storage.setItem(key, JSON.stringify(queue));
 		}
 	});
-
-	init();
-
-	if ('onstorage' in window) {
-		observe(window, "storage", function (event) {
-			// Firefox Bug: always false!
-			// and in IE8 event.storageArea is undefined
-			// TODO: IE8 has no event.{key|oldValue|newValue|storageArea}
-//			if (event.storageArea !== storage) {
-//				return;
-//			}
-			var m;
-			if (event.key === "localChannels.channels") {
-				updateChannels(JSON.parse(event.newValue));
-			}
-			else if ((m = /^localChannels\.channel\.(\d+)\.([_a-zA-Z0-9]+)$/.exec(event.key))) {
-				var channelId = Number(m[1]);
-				var field = m[2];
-
-				switch (field) {
-				case 'properties':
-					if (event.newValue) {
-						updateProperties(channelId, JSON.parse(event.newValue));
-					}
-					break;
-
-				case 'queue':
-					if (event.newValue && selfId === channelId) {
-						processQueue(JSON.parse(event.newValue));
-					}
-					break;
-				}
-			}
-		});
-	}
-	else if ('onstorage' in document) {
-		// IE8 workaround
-		observe(document, "storage", function () {
-			// IE8 has not event.{key|newValue|oldValue|storageArea} properties,
-			// so I have to explicitely send all events to all channels.
-			var key = "localChannels.channel."+selfId+".queue";
-			var queue = storage.getItem(key);
-			queue = queue ? JSON.parse(queue) : [];
-			storage.setItem(key,"[]");
-
-			for (var i = 0; i < queue.length; ++ i) {
-				try {
-					var message = queue[i];
-					switch (message.type) {
-					case "message":
-						processMessage(message);
-						break;
-
-					case "propertieschange":
-						var properties = storage.getItem("localChannels.channel."+message.source+".properties");
-						updateProperties(message.source, properties ? JSON.parse(properties) : {});
-						break;
-
-					case "channelschange":
-						var channelIds = storage.getItem("localChannels.channels");
-						updateChannels(channelIds ? JSON.parse(channelIds) : []);
-						break;
-					}
-				}
-				catch (e) {
-					if (window.console) console.error(e);
-				}
-			}
-		});
-	}
-
-	observe(window, "unload", function (event) {
-		var channelIds = storage.getItem("localChannels.channels");
-		if (channelIds) {
-			channelIds = JSON.parse(channelIds);
-			var i = channelIds.indexOf(selfId);
-			if (i >= 0) {
-				channelIds.splice(i,1);
-				storage.setItem("localChannels.channels", JSON.stringify(channelIds));
-				storage.removeItem("localChannels.channel."+selfId+".queue");
-				storage.removeItem("localChannels.channel."+selfId+".properties");
-				notifyEvent('channelschange');
-			}
-		}
-	});
-
-	function init () {
-		localChannels = new LocalChannels();
-		var channelIds = storage.getItem("localChannels.channels");
-		try {
-			channelIds = channelIds ? JSON.parse(channelIds) : [];
-		}
-		catch (e) {
-			channelIds = [];
-			if (window.console) console.error(e);
-		}
-		channels = {};
-		for (var i = 0; i < channelIds.length; ++ i) {
-			var channelId = channelIds[i];
-			channels[channelId] = new Channel(channelId);
-		}
-		channelIds.sort();
-		var maxId = channelIds.length > 0 ? channelIds[channelIds.length - 1] : -1;
-		var id;
-		if (maxId < MAX_CHANNEL_ID) {
-			id = maxId + 1;
-		}
-		else {
-			id = 0; // wrap around
-			while (id <= MAX_CHANNEL_ID && has(channels, id)) { ++ id; }
-			if (id === MAX_CHANNEL_ID) {
-				// the browser should run out of memory before this happens anyway
-				// also it should take for ever to reach this point
-				throw new TypeError("too many open channels");
-			}
-		}
-		selfId = id;
-		channelIds.push(id);
-		storage.setItem("localChannels.channels", JSON.stringify(channelIds));
-		notifyEvent('channelschange');
-	}
 
 	function extend (obj, other) {
 		for (var key in other) {
@@ -356,6 +316,74 @@ window.localChannels = (function () {
 		}
 	}
 
+	function handleStorage (event) {
+		// Firefox Bug: always false!
+		// and in IE8 event.storageArea is undefined
+		// TODO: IE8 has no event.{key|oldValue|newValue|storageArea}
+//		if (event.storageArea !== storage) {
+//			return;
+//		}
+		var m;
+		if (event.key === "localChannels.channels") {
+			updateChannels(JSON.parse(event.newValue));
+		}
+		else if ((m = /^localChannels\.channel\.(\d+)\.([_a-zA-Z0-9]+)$/.exec(event.key))) {
+			var channelId = Number(m[1]);
+			var field = m[2];
+
+			switch (field) {
+			case 'properties':
+				if (event.newValue) {
+					updateProperties(channelId, JSON.parse(event.newValue));
+				}
+				break;
+
+			case 'queue':
+				if (event.newValue && selfId === channelId) {
+					processQueue(JSON.parse(event.newValue));
+				}
+				break;
+			}
+		}
+	}
+
+	function handleStorageIE8 (event) {
+		// IE8 has not event.{key|newValue|oldValue|storageArea} properties,
+		// so I have to explicitely send all events to all channels.
+		var key = "localChannels.channel."+selfId+".queue";
+		var queue = storage.getItem(key);
+		queue = queue ? JSON.parse(queue) : [];
+		storage.setItem(key,"[]");
+
+		for (var i = 0; i < queue.length; ++ i) {
+			try {
+				var message = queue[i];
+				switch (message.type) {
+				case "message":
+					processMessage(message);
+					break;
+
+				case "propertieschange":
+					var properties = storage.getItem("localChannels.channel."+message.source+".properties");
+					updateProperties(message.source, properties ? JSON.parse(properties) : {});
+					break;
+
+				case "channelschange":
+					var channelIds = storage.getItem("localChannels.channels");
+					updateChannels(channelIds ? JSON.parse(channelIds) : []);
+					break;
+				}
+			}
+			catch (e) {
+				if (window.console) console.error(e);
+			}
+		}
+	}
+
+	function handleUnload (event) {
+		localStorage.disconnect();
+	}
+
 	function processMessage (message) {
 		var channel = channels[message.source];
 		var event = new MessageEvent(channel,message.data);
@@ -394,6 +422,10 @@ window.localChannels = (function () {
 	DisconnectEvent.prototype       = new Event();
 	PropertiesChangeEvent.prototype = new Event();
 	MessageEvent.prototype          = new Event();
+
+	var selfId = null;
+	var channels;
+	var localChannels = new LocalChannels();
 
 	return localChannels;
 })();

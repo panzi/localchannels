@@ -38,6 +38,7 @@
 		var targetEl = document.getElementById("target");
 		var outEl = document.getElementById("out");
 
+		localChannels.connect();
 		document.title = "Channel "+localChannels.selfId();
 		idEl.appendChild(document.createTextNode(localChannels.selfId()));
 		originEl.appendChild(document.createTextNode(location.protocol+"//"+location.host));
