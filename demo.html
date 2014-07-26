@@ -17,15 +17,24 @@
 #props input[type=text] {
 	width: 200px;
 }
+#out li .head {
+	font-family: monospace;
+}
 #out li .head:before {
 	content: "[";
+	font-family: monospace;
 }
 #out li .head:after {
 	content: "]";
+	font-family: monospace;
 }
 #out li .source {
 	font-weight: bold;
 	margin-right: 10px;
+}
+#out li .body.name {
+	display: inline;
+	margin: 0 0 0 10px;
 }
 h2 button {
 	vertical-align: text-bottom;
@@ -34,10 +43,8 @@ h2 button {
 	<script type="text/javascript">
 	// <![CDATA[
 	function init () {
-		var idEl = document.getElementById("channelid");
+		var idEl     = document.getElementById("channelid");
 		var originEl = document.getElementById("origin");
-		var targetEl = document.getElementById("target");
-		var outEl = document.getElementById("out");
 
 		localChannels.connect();
 		document.title = "Channel "+localChannels.selfId();
@@ -47,17 +54,17 @@ h2 button {
 		var channels = localChannels.getChannels();
 		for (var i = 0; i < channels.length; ++ i) {
 			var channel = channels[i];
-			addTarget(channel);
+			addChannel(channel);
 		}
 		channels = null;
 
 		localChannels.addEventListener("connect", function (event) {
-			addTarget(event.source);
+			addChannel(event.source);
 			logEvent(event);
 		});
 
 		localChannels.addEventListener("disconnect", function (event) {
-			var el = document.getElementById("target_"+event.source.id());
+			var el = document.getElementById("channel_"+event.source.id());
 			if (el) {
 				el.parentNode.removeChild(el);
 			}
@@ -67,62 +74,153 @@ h2 button {
 		localChannels.addEventListener("message", logEvent);
 		localChannels.addEventListener("propertieschange", logEvent);
 
-		function addTarget (channel) {
-			var id = channel.id();
-			var el = document.createElement("option");
-			el.id = "target_"+id;
-			el.value = id;
-			el.appendChild(document.createTextNode("Channel "+id));
-			targetEl.appendChild(el);
+		localChannels.addEventListener("bind", function (event) {
+			if (event.source !== localChannels.self()) {
+				var nameEl = document.getElementById("name_"+event.name);
+				if (nameEl) {
+					nameEl.parentNode.removeChild(nameEl);
+				}
+				bindChannel(event.source, event.name);
+			}
+			logEvent(event);
+		});
+		
+		localChannels.addEventListener("unbind", function (event) {
+			if (event.source === localChannels.self()) {
+				var nameEl = document.getElementById("name_"+event.name);
+				if (nameEl) {
+					nameEl.parentNode.removeChild(nameEl);
+				}
+			}
+			else {
+				unbindChannel(event.name);
+			}
+			logEvent(event);
+		});
+	}
+
+	function logEvent (event) {
+		var id = event.source.id();
+		var type = event.type;
+		var itemEl = document.createElement('li');
+		var srcEl = document.createElement('span');
+		var typeEl = document.createElement('span');
+		var headEl = document.createElement('span');
+		headEl.className = "head";
+		srcEl.className = "source";
+		srcEl.appendChild(document.createTextNode("Channel "+id));
+		typeEl.className = "type";
+		typeEl.appendChild(document.createTextNode(type));
+		headEl.appendChild(srcEl);
+		headEl.appendChild(typeEl);
+		itemEl.appendChild(headEl);
+
+		if (type === "message") {
+			var msgEl = document.createElement("pre");
+			msgEl.className = "body data";
+			msgEl.appendChild(document.createTextNode(event.data));
+			itemEl.appendChild(msgEl);
+		}
+		else if (type === "propertieschange") {
+			var propsEl = document.createElement("pre");
+			propsEl.className = "body properties";
+			propsEl.appendChild(document.createTextNode(JSON.stringify(event.properties,null,4)));
+			itemEl.appendChild(propsEl);
+		}
+		else if (type === "bind" || type === "unbind") {
+			var msgEl = document.createElement("pre");
+			msgEl.className = "body name";
+			msgEl.appendChild(document.createTextNode(event.name));
+			itemEl.appendChild(msgEl);
 		}
 
-		function logEvent (event) {
-			var id = event.source.id();
-			var type = event.type;
-			var itemEl = document.createElement('li');
-			var srcEl = document.createElement('span');
-			var typeEl = document.createElement('span');
-			var headEl = document.createElement('span');
-			headEl.className = "head";
-			srcEl.className = "source";
-			srcEl.appendChild(document.createTextNode("Channel "+id));
-			typeEl.className = "type";
-			typeEl.appendChild(document.createTextNode(type.replace(/^localchannels:/,'')));
-			headEl.appendChild(srcEl);
-			headEl.appendChild(typeEl);
-			itemEl.appendChild(headEl);
+		document.getElementById("out").appendChild(itemEl);
+	}
 
-			if (type === "message") {
-				var msgEl = document.createElement("pre");
-				msgEl.className = "body message";
-				msgEl.appendChild(document.createTextNode(event.data));
-				itemEl.appendChild(msgEl);
-			}
-			else if (type === "propertieschange") {
-				var propsEl = document.createElement("pre");
-				propsEl.className = "body propertieschange";
-				propsEl.appendChild(document.createTextNode(JSON.stringify(event.properties,null,4)));
-				itemEl.appendChild(propsEl);
-			}
+	function addChannel (channel) {
+		var id = channel.id();
+		var el = document.createElement("option");
+		el.id = "channel_"+id;
+		el.value = "id:"+id;
+		el.appendChild(document.createTextNode("Channel "+id));
+		document.getElementById("channels_by_id").appendChild(el);
+	}
 
-			outEl.appendChild(itemEl);
+	function bindChannel (channel, name) {
+		var el = document.createElement("option");
+		el.id = "channel_name_"+name;
+		el.value = "name:"+name;
+		el.appendChild(document.createTextNode(name));
+		document.getElementById("channels_by_name").appendChild(el);
+	}
+
+	function unbindChannel (name) {
+		var el = document.getElementById("channel_name_"+name);
+		if (el) {
+			el.parentNode.removeChild(el);
 		}
 	}
-	
+
 	function sendMessage () {
 		var message = document.getElementById("message").value;
 		var targetId = document.getElementById("target").value;
+		var m;
 		if (targetId === "broadcast") {
 			localChannels.postMessage(message);
 		}
-		else {
-			var channel = localChannels.getChannel(targetId);
+		else if ((m = /^id:(.*)$/.exec(targetId))) {
+			var channel = localChannels.getChannelById(m[1]);
 			if (channel) {
 				channel.postMessage(message);
 			}
 			else {
-				alert("Channel "+targetEl.value+" not in known channel list!");
+				alert("Channel "+m[1]+" not in known channel list!");
 			}
+		}
+		else if ((m = /^name:(.*)$/.exec(targetId))) {
+			var channel = localChannels.getChannelByName(m[1]);
+			if (channel) {
+				channel.postMessage(message);
+			}
+			else {
+				alert("Channel name »"+m[1]+"« is not bound!");
+			}
+		}
+	}
+
+	function bindName (rebind) {
+		var name = prompt("Name:","");
+		if (name !== null) {
+			try {
+				localChannels.self().bind(name, rebind);
+			}
+			catch (e) {
+				alert(e);
+				return;
+			}
+
+			var namesEl = document.getElementById('names');
+			var nameEl  = document.createElement('li');
+			var labelEl = document.createElement('span');
+			var remEl   = document.createElement('button');
+			
+			nameEl.id = "name_"+name;
+			labelEl.className = "name";
+			labelEl.appendChild(document.createTextNode(name));
+			remEl.innerHTML = '&times;';
+			remEl.setAttribute('type', 'button');
+			remEl.setAttribute('title', 'Unbind Name');
+			remEl.onclick = function () {
+				localChannels.self().unbind(name);
+				namesEl.removeChild(nameEl);
+				unbindChannel(name);
+			};
+
+			nameEl.appendChild(labelEl);
+			nameEl.appendChild(remEl);
+			namesEl.appendChild(nameEl);
+
+			bindChannel(localChannels.self(), name);
 		}
 	}
 
@@ -134,10 +232,10 @@ h2 button {
 				return;
 			}
 			var propsEl = document.getElementById('props');
-			var propEl = document.createElement('li');
-			var nameEl = document.createElement('label');
+			var propEl  = document.createElement('li');
+			var nameEl  = document.createElement('label');
 			var valueEl = document.createElement('input');
-			var remEl = document.createElement('button');
+			var remEl   = document.createElement('button');
 
 			nameEl.htmlFor = valueEl.id = "prop_"+name;
 			nameEl.appendChild(document.createTextNode(name));
@@ -149,7 +247,7 @@ h2 button {
 			remEl.setAttribute('title', 'Remove Property');
 			remEl.innerHTML = '&times;';
 			remEl.onclick = function () {
-				localChannels.removeProperty(name);
+				localChannels.self().removeProperty(name);
 				propsEl.removeChild(propEl);
 			};
 
@@ -169,7 +267,7 @@ h2 button {
 			var propEl = propEls[i];
 			props[propEl.name] = propEl.value;
 		}
-		localChannels.setProperties(props);
+		localChannels.self().setProperties(props);
 	}
 	// ]]>
 	</script>
@@ -179,15 +277,22 @@ h2 button {
 	<form action="javascript:;" onsubmit="sendMessage(); return false;">
 		<select id="target">
 			<option value="broadcast">Broadcast</option>
+			<optgroup id="channels_by_id" label="Channels by Id"></optgroup>
+			<optgroup id="channels_by_name" label="Channels by Name"></optgroup>
 		</select>
 		<input type="text" value="" id="message" placeholder="message"/>
 		<button type="submit">Send Message</button>
 	</form>
 
+	<h2>Names</h2>
+	<ul id="names"></ul>
+	<button type="button" onclick="bindName(false);">Bind Name...</button>
+	<button type="button" onclick="bindName(true);">Rebind Name...</button>
+
 	<h2>Properties</h2>
 	<form action="javascript:;" onsubmit="updateProps(); return false;">
 		<ul id="props"></ul>
-		<button type="button" onclick="addProp();">Add Property</button>
+		<button type="button" onclick="addProp();">Add Property...</button>
 		<button type="submit">Update Properties</button>
 	</form>
 
