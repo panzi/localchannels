@@ -135,11 +135,53 @@ window.localChannels = (function () {
 			var id = bindings[name];
 			return channels[id]||null;
 		},
-		getChannels: function () {
+		getChannels: function (filter) {
 			if (selfId === null) throw new TypeError("local channel is not connected");
 			var channelList = [];
-			for (var channelId in channels) {
-				channelList.push(channels[channelId]);
+			if (filter) {
+				var matches;
+
+				switch (typeof filter) {
+				case "string":
+					filter = compileFilter(filter);
+					var bindings = this.__getBindings();
+					var visited  = {};
+					for (var name in bindings) {
+						var id = bindings[name];
+						if (visited[id] !== true) {
+							if (filter.test(name)) {
+								channelList.push(channels[id]);
+								visited[id] = true;
+							}
+						}
+					}
+					return;
+
+				case "function":
+					matches = filter;
+					break;
+
+				case "object":
+					matches = propertiesMatcher(filter);
+					break;
+
+				default:
+					throw new TypeError("illegal filter argument");
+				}
+
+				for (var channelId in channels) {
+					if (channelId != selfId) {
+						var channel = channels[channelId];
+						if (matches(channel)) {
+							channelList.push(channel);
+						}
+					}
+				}
+			}
+			else {
+				for (var channelId in channels) {
+					channelList.push(channels[channelId]);
+				}
 			}
 			return channelList;
 		},
@@ -179,9 +221,7 @@ window.localChannels = (function () {
 
 				switch (typeof filter) {
 				case "string":
-					filter = new RegExp("^" + filter.replace(/[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g, function (ch) {
-						return ch === "*" ? ".*" : "\\"+ch;
-					}) + "$");
+					filter = compileFilter(filter);
 					var bindings = this.__getBindings();
 					var visited  = {};
 					for (var name in bindings) {
@@ -200,15 +240,7 @@ window.localChannels = (function () {
 					break;
 
 				case "object":
-					matches = function (channel) {
-						var properties = channel.getProperties();
-						for (var key in filter) {
-							if (properties[key] !== filter[key]) {
-								return false;
-							}
-						}
-						return true;
-					};
+					matches = propertiesMatcher(filter);
 					break;
 
 				default:
@@ -646,6 +678,24 @@ window.localChannels = (function () {
 		var event = new MessageEvent(channel, message.data);
 		channels[selfId].dispatchEvent(event);
 		localChannels.dispatchEvent(event);
+	}
+
+	function compileFilter (filter) {
+		return new RegExp("^" + filter.replace(/[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g, function (ch) {
+			return ch === "*" ? ".*" : "\\"+ch;
+		}) + "$");
+	}
+
+	function propertiesMatcher (filter) {
+		return function (channel) {
+			var properties = channel.getProperties();
+			for (var key in filter) {
+				if (properties[key] !== filter[key]) {
+					return false;
+				}
+			}
+			return true;
+		};
 	}
 
 	function Event () {}
