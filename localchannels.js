@@ -1,8 +1,6 @@
 window.localChannels = (function () {
 	"use strict";
 
-	// TODO: maybe also dispatch propertieschange, bind and unbind events to self?
-	//       maybe rename to localQueues? messageQueues?
 	var MAX_CHANNEL_ID = 0xFFFFFFFF; // max unsigned 32bit integer, it's big and can be expressed by double
 	var storage = localStorage;
 

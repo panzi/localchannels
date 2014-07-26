@@ -1,7 +1,14 @@
-local channels
+Local Channels
 ==============
 
-TODO: write readme
+TODO:
+
+ * write readme
+ * maybe change name? localQueues? messageQueues?
+ * maybe also dispatch propertieschange, bind and unbind events to self?
+
+Supports Internet Exporer 8+ and every modern browser that *correctly* implements
+HTML5 local storage (e.g. Firefox, Chrome and Safari).
 
 ```javascript
 localChannels.connect();
