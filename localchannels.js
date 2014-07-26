@@ -40,6 +40,7 @@ window.localChannels = (function () {
 			context.detachEvent('on'+event, handler.__localChannels_wrapper);
 		};
 
+	// notifies all other channels of an event caused by this channel
 	var notifyEvent = 'onstorage' in window ? function (type, properties) {
 			// done via event.key in storage event handler
 		} :
@@ -57,7 +58,7 @@ window.localChannels = (function () {
 			if (!this.__event_target_handlers) {
 				this.__event_target_handlers = {};
 			}
-			if (has(this.__event_target_handlers,event)) {
+			if (has(this.__event_target_handlers, event)) {
 				this.__event_target_handlers[event].push(handler);
 			}
 			else {
@@ -66,17 +67,28 @@ window.localChannels = (function () {
 		},
 		removeEventListener: function (event, handler) {
 			if (!__event_target_handlers) return;
-			if (has(this.__event_target_handlers,event)) {
+			if (has(this.__event_target_handlers, event)) {
 				var handlers = this.__event_target_handlers[event];
 				var i = handlers.indexOf(handler);
 				if (i >= 0) {
-					hadnlers.splice(i,1);
+					handlers.splice(i,1);
 				}
 			}
 		},
 		dispatchEvent: function (event) {
+			var handler = this['on'+event.type];
+			if (handler) {
+				try {
+					handler.call(this,event);
+				}
+				catch (e) {
+					if (window.console) {
+						console.error(e);
+					}
+				}
+			}
 			if (!this.__event_target_handlers) return;
-			if (has(this.__event_target_handlers,event.type)) {
+			if (has(this.__event_target_handlers, event.type)) {
 				var handlers = this.__event_target_handlers[event.type];
 				for (var i = 0; i < handlers.length; ++ i) {
 					try {
@@ -96,11 +108,17 @@ window.localChannels = (function () {
 
 	LocalChannels.prototype = extend(new EventTarget(), {
 		MAX_CHANNEL_ID: MAX_CHANNEL_ID,
+		onconnect:          null,
+		ondisconnect:       null,
+		onmessage:          null,
+		onpropertieschange: null,
+		onbind:             null,
+		onunbind:           null,
 		selfId: function () {
 			return selfId;
 		},
 		self: function () {
-			return channels[selfId]||null;
+			return selfId === null ? null : channels[selfId];
 		},
 		getChannelById: function (id) {
 			if (selfId === null) throw new TypeError("local channel is not connected");
@@ -157,18 +175,50 @@ window.localChannels = (function () {
 		__postMessage: function (message, filter) {
 			if (selfId === null) throw new TypeError("local channel is not connected");
 			if (filter) {
+				var matches;
+
+				switch (typeof filter) {
+				case "string":
+					filter = new RegExp("^" + filter.replace(/[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g, function (ch) {
+						return ch === "*" ? ".*" : "\\"+ch;
+					}) + "$");
+					var bindings = this.__getBindings();
+					var visited  = {};
+					for (var name in bindings) {
+						var id = bindings[name];
+						if (visited[id] !== true) {
+							if (filter.test(name)) {
+								channels[id].__postMessage(message);
+								visited[id] = true;
+							}
+						}
+					}
+					return;
+
+				case "function":
+					matches = filter;
+					break;
+
+				case "object":
+					matches = function (channel) {
+						var properties = channel.getProperties();
+						for (var key in filter) {
+							if (properties[key] !== filter[key]) {
+								return false;
+							}
+						}
+						return true;
+					};
+					break;
+
+				default:
+					throw new TypeError("illegal filter argument");
+				}
+
 				for (var channelId in channels) {
 					if (channelId != selfId) {
 						var channel = channels[channelId];
-						var properties = channel.getProperties();
-						var matches = true;
-						for (var key in filter) {
-							if (properties[key] !== filter[key]) {
-								matches = false;
-								break;
-							}
-						}
-						if (matches) {
+						if (matches(channel)) {
 							channel.__postMessage(message);
 						}
 					}
@@ -313,12 +363,17 @@ window.localChannels = (function () {
 			channels = null;
 		}
 	});
-	
+
 	function Channel (id) {
 		this.__id = id;
 	}
 
 	Channel.prototype = extend(new EventTarget(), {
+		onconnect:          null,
+		ondisconnect:       null,
+		onpropertieschange: null,
+		onbind:             null,
+		onunbind:           null,
 		id: function () {
 			return this.__id;
 		},
@@ -377,6 +432,7 @@ window.localChannels = (function () {
 	}
 
 	SelfChannel.prototype = extend(new Channel(null), {
+		onmessage: null,
 		setProperties: function (properties) {
 			var key = 'localChannels.channel.'+this.__id+'.properties';
 			storage.setItem(key, JSON.stringify(properties));

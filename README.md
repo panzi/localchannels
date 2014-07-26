@@ -10,10 +10,21 @@ TODO:
 Supports Internet Exporer 8+ and every modern browser that *correctly* implements
 HTML5 local storage (e.g. Firefox, Chrome and Safari).
 
+Basic Usage
+-----------
+
 ```javascript
 localChannels.connect();
-...
+localChannels.onmessage = function (event) {
+	alert("Got a message: "+event.data);
+};
+localChannels.postMessage("broadcast message");
+localChannels.self().bind("some.name");
+localChannels.getChannelByName("some.other.name").postMessage("message to named channel");
+localChannels.postMessage("broadcast to some channels", "some.*");
 ```
+
+Message `data` can be anything that survives a `JSON.stringify`/`JSON.parse` roundtrip.
 
 ### Events
 
