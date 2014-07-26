@@ -537,7 +537,7 @@ window.localChannels = (function () {
 	}
 
 	function handleStorageIE8 (event) {
-		// IE8 has not event.{key|newValue|oldValue|storageArea} properties,
+		// IE8 has no event.{key|newValue|oldValue|storageArea} properties,
 		// so I have to explicitely send all events to all channels.
 		var key = "localChannels.channel."+selfId+".queue";
 		var queue = storage.getItem(key);
