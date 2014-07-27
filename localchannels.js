@@ -107,13 +107,25 @@ window.localChannels = (function () {
 	function LocalChannels () {}
 
 	LocalChannels.prototype = extend(new EventTarget(), {
+		// expose types:
+		Event:                 Event,
+		EventTarget:           EventTarget,
+		ConnectionEvent:       ConnectionEvent,
+		PropertiesChangeEvent: PropertiesChangeEvent,
+		MessageEvent:          MessageEvent,
+		BindingEvent:          BindingEvent,
+		Channel:               Channel,
+		SelfChannel:           SelfChannel,
+
 		MAX_CHANNEL_ID: MAX_CHANNEL_ID,
+
 		onconnect:          null,
 		ondisconnect:       null,
 		onmessage:          null,
 		onpropertieschange: null,
 		onbind:             null,
 		onunbind:           null,
+
 		selfId: function () {
 			return selfId;
 		},
@@ -191,7 +203,7 @@ window.localChannels = (function () {
 			var idBindings = this.__getBindings();
 			for (var name in idBindings) {
 				var id = idBindings[name];
-				if (has(channels,id)) {
+				if (has(channels, id)) {
 					bindings[name] = channels[id];
 				}
 			}
@@ -514,14 +526,14 @@ window.localChannels = (function () {
 			}
 			else {
 				var channel = newChannels[channelId] = new Channel(channelId);
-				events.push(new ConnectEvent(channel));
+				events.push(new ConnectionEvent("connect", channel));
 			}
 		}
 
 		for (var channelId in channels) {
 			if (!has(newChannels, channelId)) {
 				var channel = channels[channelId];
-				events.push(new DisconnectEvent(channel));
+				events.push(new ConnectionEvent("disconnect", channel));
 			}
 		}
 
@@ -583,7 +595,7 @@ window.localChannels = (function () {
 				var id = oldBindings[name];
 				if (!has(newBindings, name) || newBindings[name] !== id) {
 					var channel = channels[id];
-					var newEvent = new UnbindEvent(channel, name);
+					var newEvent = new BindingEvent("unbind", channel, name);
 					channel.dispatchEvent(newEvent);
 					localChannels.dispatchEvent(newEvent);
 				}
@@ -593,7 +605,7 @@ window.localChannels = (function () {
 				var id = newBindings[name];
 				if (!has(oldBindings, name) || oldBindings[name] !== id) {
 					var channel = channels[id];
-					var newEvent = new BindEvent(channel, name);
+					var newEvent = new BindingEvent("bind", channel, name);
 					channel.dispatchEvent(newEvent);
 					localChannels.dispatchEvent(newEvent);
 				}
@@ -650,14 +662,14 @@ window.localChannels = (function () {
 
 				case "bind":
 					var channel = channels[message.source];
-					var newEvent = new BindEvent(channel, message.name);
+					var newEvent = new BindingEvent("bind", channel, message.name);
 					channel.dispatchEvent(newEvent);
 					localChannels.dispatchEvent(newEvent);
 					break;
 
 				case "unbind":
 					var channel = channels[message.source];
-					var newEvent = new UnbindEvent(channel, message.name);
+					var newEvent = new BindingEvent("unbind", channel, message.name);
 					channel.dispatchEvent(newEvent);
 					localChannels.dispatchEvent(newEvent);
 					break;
@@ -708,12 +720,8 @@ window.localChannels = (function () {
 		}
 	};
 
-	function ConnectEvent (source) {
-		this.initEvent('connect', source);
-	}
-
-	function DisconnectEvent (source) {
-		this.initEvent('disconnect', source);
+	function ConnectionEvent (type, source) {
+		this.initEvent(type, source);
 	}
 
 	function PropertiesChangeEvent (source, properties) {
@@ -721,13 +729,8 @@ window.localChannels = (function () {
 		this.properties = properties;
 	}
 
-	function BindEvent (source, name) {
-		this.initEvent('bind', source);
-		this.name = name;
-	}
-
-	function UnbindEvent (source, name) {
-		this.initEvent('unbind', source);
+	function BindingEvent (type, source, name) {
+		this.initEvent(type, source);
 		this.name = name;
 	}
 
@@ -736,11 +739,9 @@ window.localChannels = (function () {
 		this.data = data;
 	}
 
-	ConnectEvent.prototype          = new Event();
-	DisconnectEvent.prototype       = new Event();
+	ConnectionEvent.prototype       = new Event();
 	PropertiesChangeEvent.prototype = new Event();
-	BindEvent.prototype             = new Event();
-	UnbindEvent.prototype           = new Event();
+	BindingEvent.prototype          = new Event();
 	MessageEvent.prototype          = new Event();
 
 	var selfId   = null;
