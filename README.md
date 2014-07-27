@@ -45,7 +45,7 @@ the same origin. This is possible because whenever any window sets any local sto
 
 There is one global instance of the `LocalChannles` interface `window.localChannles`.
 
-	interface ConnectParameters {
+	dictionary ConnectParameters {
 		attribute String? name;
 		attribute boolean rebind = false;
 		attribute object? properties;
