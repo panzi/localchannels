@@ -72,7 +72,7 @@ There is one global instance of the `LocalChannles` interface `window.localChann
 		attribute EventHandler? onunbind;
 		
 		unsigned int? selfId();
-		Channel?      self();
+		SelfChannel?  self();
 		Channel?      getChannelById(unsigned int id) raises(TypeError);
 		Channel?      getChannelByName(String name) raises(TypeError);
 		Channel[]     getChannels(optional (String or FilterFunction or object) filter)
@@ -140,6 +140,9 @@ which still happens asynchrounously.
 anyway, so that the original value can be changed without unexpected side effects?
 
 #### SelfChannel
+
+`localChannels.self()` returns an instance of this class. This is the channel that will
+be referred to as the source for all messages sent to other channels.
 
 You can also bind an arbitrary number of unique names to the self channel through which
 it can be addressed by other windows. You can also attach arbitrary properties to the
