@@ -453,25 +453,6 @@ window.localChannels = (function () {
 			queue = queue ? JSON.parse(queue) : [];
 			queue.push(message);
 			storage.setItem(key, JSON.stringify(queue));
-		},
-		bind: function (name, rebind) {
-			var bindings = localChannels.__getBindings();
-
-			if (!rebind && has(bindings, name)) {
-				throw new TypeError("local channel name already bound: "+name);
-			}
-			bindings[name] = this.__id;
-			storage.setItem('localChannels.bindings', JSON.stringify(bindings));
-			notifyEvent('bind', {name: name});
-		},
-		unbind: function (name) {
-			var bindings = localChannels.__getBindings();
-			if (!has(bindings, name) || bindings[name] !== this.__id) {
-				throw new TypeError("name not bound to local channel");
-			}
-			delete bindings[name];
-			storage.setItem('localChannels.bindings', JSON.stringify(bindings));
-			notifyEvent('unbind', {name: name});
 		}
 	});
 
@@ -509,6 +490,25 @@ window.localChannels = (function () {
 				self.dispatchEvent(event);
 				localChannels.dispatchEvent(event);
 			}, 0);
+		},
+		bind: function (name, rebind) {
+			var bindings = localChannels.__getBindings();
+
+			if (!rebind && has(bindings, name)) {
+				throw new TypeError("local channel name already bound: "+name);
+			}
+			bindings[name] = this.__id;
+			storage.setItem('localChannels.bindings', JSON.stringify(bindings));
+			notifyEvent('bind', {name: name});
+		},
+		unbind: function (name) {
+			var bindings = localChannels.__getBindings();
+			if (!has(bindings, name) || bindings[name] !== this.__id) {
+				throw new TypeError("name not bound to local channel");
+			}
+			delete bindings[name];
+			storage.setItem('localChannels.bindings', JSON.stringify(bindings));
+			notifyEvent('unbind', {name: name});
 		}
 	});
 
