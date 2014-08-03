@@ -10,6 +10,11 @@ communicate.
 This supports Internet Exporer 8+ and every modern browser that *correctly* implements
 HTML5 local storage including the storage event (e.g. Firefox, Chrome and Safari).
 
+ * [Basic Usage](#basic-usage)
+ * [TODO](#todo)
+ * [Reference](#reference)
+ * [License](#license)
+
 Basic Usage
 -----------
 
@@ -29,6 +34,7 @@ Message `data` can be anything that survives a `JSON.stringify`/`JSON.parse` rou
 TODO
 ----
 
+ * write tests
  * maybe change the name? localQueues? messageQueues?
  * maybe also dispatch propertieschange, bind and unbind events to self?
 
