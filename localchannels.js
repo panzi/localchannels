@@ -34,7 +34,7 @@ window.localChannels = (function () {
 
 	var unobserve = window.addEventListener ?
 		function (context, event, handler) {
-			context.removeEventListener(event, handler);
+			context.removeEventListener(event, handler, false);
 		} :
 		function (context, event, handler) {
 			context.detachEvent('on'+event, handler.__localChannels_wrapper);
