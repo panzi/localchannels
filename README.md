@@ -8,7 +8,7 @@ load, but it also means that only windows of the same browser on the same machin
 communicate.
 
 This supports Internet Exporer 8+ and every modern browser that *correctly* implements
-HTML5 local storage (e.g. Firefox, Chrome and Safari).
+HTML5 local storage including the storage event (e.g. Firefox, Chrome and Safari).
 
 Basic Usage
 -----------
@@ -29,14 +29,13 @@ Message `data` can be anything that survives a `JSON.stringify`/`JSON.parse` rou
 TODO
 ----
 
- * write readme
  * maybe change the name? localQueues? messageQueues?
  * maybe also dispatch propertieschange, bind and unbind events to self?
 
 Many functions of this library are synchronous (e.g. `LocalChannels::getChannelByName` and
 `Channel::bind` etc.) because the underlying local storage works synchronously as well.
 Currently there aren't any alternatives for the local storage that dispatch events when
-something cahnges, but maybe there will be one in the future and maybe (likely) that will
+something changes, but maybe there will be one in the future and maybe (likely) that will
 work asynchronously. So maybe it would be a good idea to change all functions so that they
 already act asynchronously and require callback arguments?
 
