@@ -118,7 +118,7 @@ h2 button {
 		if (type === "message") {
 			var msgEl = document.createElement("pre");
 			msgEl.className = "body data";
-			msgEl.appendChild(document.createTextNode(event.data));
+			msgEl.appendChild(document.createTextNode(JSON.stringify(event.data,null,4)));
 			itemEl.appendChild(msgEl);
 		}
 		else if (type === "propertieschange") {
@@ -164,6 +164,16 @@ h2 button {
 	function sendMessage () {
 		var message = document.getElementById("message").value;
 		var targetId = document.getElementById("target").value;
+		var json = document.getElementById("json").checked;
+		if (json) {
+			try {
+				message = JSON.parse(message);
+			}
+			catch (e) {
+				alert("Error parsing JSON input: "+e);
+				return;
+			}
+		}
 		var m;
 		if (targetId === "broadcast") {
 			localChannels.postMessage(message);
@@ -281,6 +291,7 @@ h2 button {
 			<optgroup id="channels_by_name" label="Channels by Name"></optgroup>
 		</select>
 		<input type="text" value="" id="message" placeholder="message"/>
+		<label title="Input is JSON."><input type="checkbox" value="1" id="json"/> JSON</label>
 		<button type="submit">Send Message</button>
 	</form>
 
