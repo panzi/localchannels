@@ -52,16 +52,16 @@ the same origin. This is possible because whenever any window sets any local sto
   * [SelfChannel](#selfchannel)
  * [Events](#events)
   * [ConnectEvent](#connectevent)
-   * [connect](#connect)
-   * [disconnect](#disconnect)
+    * [connect](#connect)
+    * [disconnect](#disconnect)
   * [PropertiesChangeEvent](#propertieschangeevent)
-   * [propertieschange](#propertieschange)
+    * [propertieschange](#propertieschange)
   * [BindingEvent](#bindingevent)
-   * [bind](#bind)
-   * [unbind](#unbind)
+    * [bind](#bind)
+    * [unbind](#unbind)
   * [MessageEvent](#messageevent)
-   * [message](#message)
- * [Local Storage Keys](#localstoragekeys)
+    * [message](#message)
+ * [Local Storage Keys](#local-storage-keys)
 
 ### Channels
 
@@ -138,7 +138,7 @@ Throws `TypeError` if not connected.
 	              raises(TypeError);
 
 Returns array of `Channel` objects. If `filter` is not given all channels (including self) are
-returned. See [postMessage](#localchannels__postMessage) for a description of the `filter`
+returned. See [postMessage](#localchannelspostMessage) for a description of the `filter`
 parameter.
 
 Throws `TypeError` if not connected.
@@ -188,7 +188,7 @@ Returns `true` if conencted, `false` otherwise.
 	Channel connect(optional ConnectParameters options) raises(TypeError);
 
 Connect local channel. The optional `options` parameter can be used to pass a name to which
-the `SelfChannel` will be [bound](#selfchannel__bind) and a [properties](#selfchannel_setproperties)
+the `SelfChannel` will be [bound](#selfchannelbind) and a [properties](#selfchannelsetproperties)
 map that contains the properties of the `SelfChannel`.
 
 Throws `TypeError` if already connected.
