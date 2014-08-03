@@ -38,12 +38,13 @@ TODO
  * maybe change the name? localQueues? messageQueues?
  * maybe also dispatch propertieschange, bind and unbind events to self?
 
-Many functions of this library are synchronous (e.g. `LocalChannels::getChannelByName` and
-`Channel::bind` etc.) because the underlying local storage works synchronously as well.
-Currently there aren't any alternatives for the local storage that dispatch events when
-something changes, but maybe there will be one in the future and maybe (likely) that will
-work asynchronously. So maybe it would be a good idea to change all functions so that they
-already act asynchronously and require callback arguments?
+Many functions of this library are synchronous (e.g.
+[LocalChannels::getChannelByName](#localchannelsgetchannelbyname) and
+[SelfChannel::bind](#selfchannelbind) etc.) because the underlying local storage works
+synchronously as well. Currently there aren't any alternatives for the local storage that
+dispatch events when something changes, but maybe there will be one in the future and maybe
+(likely) that will work asynchronously. So maybe it would be a good idea to change all
+functions so that they already act asynchronously and require callback arguments?
 
 Reference
 ---------
