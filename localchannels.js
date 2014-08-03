@@ -436,7 +436,11 @@ window.localChannels = (function () {
 			return props ? JSON.parse(props) : {};
 		},
 		getProperty: function (name) {
-			return this.getProperty()[name];
+			var props = this.getProperties();
+			return has(props,name) ? props[name] : null;
+		},
+		hasProperty: function (name) {
+			return has(this.getProperties(),name);
 		},
 		postMessage: 'onstorage' in window ? function (data) {
 			this.__postMessage({source: selfId, data: data});
