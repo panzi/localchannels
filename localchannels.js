@@ -405,6 +405,12 @@ window.localChannels = (function () {
 
 			selfId   = null;
 			channels = null;
+		},
+		toString: function () {
+			return "[object LocalChannels]";
+		},
+		toJSON: function () {
+			return this.toString();
 		}
 	});
 
@@ -440,7 +446,7 @@ window.localChannels = (function () {
 			return has(props,name) ? props[name] : null;
 		},
 		hasProperty: function (name) {
-			return has(this.getProperties(),name);
+			return has(this.getProperties(), name);
 		},
 		postMessage: 'onstorage' in window ? function (data) {
 			this.__postMessage({source: selfId, data: data});
@@ -453,6 +459,12 @@ window.localChannels = (function () {
 			queue = queue ? JSON.parse(queue) : [];
 			queue.push(message);
 			storage.setItem(key, JSON.stringify(queue));
+		},
+		toString: function () {
+			return "[object Channel "+this.__id+"]";
+		},
+		toJSON: function () {
+			return this.toString();
 		}
 	});
 
@@ -509,6 +521,9 @@ window.localChannels = (function () {
 			delete bindings[name];
 			storage.setItem('localChannels.bindings', JSON.stringify(bindings));
 			notifyEvent('unbind', {name: name});
+		},
+		toString: function () {
+			return "[object SelfChannel "+this.__id+"]";
 		}
 	});
 
