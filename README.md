@@ -22,6 +22,7 @@ Basic Usage
 localChannels.connect();
 localChannels.onmessage = function (event) {
 	alert("Got a message: "+event.data);
+	event.source.postMessage("message back to source of processed message");
 };
 localChannels.postMessage("broadcast message");
 localChannels.self().bind("some.name");
