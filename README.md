@@ -28,6 +28,9 @@ localChannels.postMessage("broadcast message");
 localChannels.self().bind("some.name");
 localChannels.getChannelByName("some.other.name").postMessage("message to named channel");
 localChannels.postMessage("broadcast to some channels", "some.*");
+localChannels.addEventListener("connect", function (event) {
+	alert("channel connected: "+event.source.id());
+});
 ```
 
 Message `data` can be anything that survives a `JSON.stringify`/`JSON.parse` roundtrip.
@@ -354,6 +357,19 @@ Throws `TypeError` if not bound to `name`.
 The `Event` and `EventTarget` interfaces are not to be confused with the interfaces
 of the same name in standard ECMAScript. These here are plain JavaScript objects only
 used within this library.
+
+`EventTarget`s support event listeners added via [addEventListener](#eventtargetaddeventlistener)
+and via assigning of an appropriate `on${type}` property.
+
+In this example two event listeners are bound to the `message` event:
+
+```javascript
+localChannels.onmessage = function (event) { ... };
+localChannels.addEventListener("message", function (event) { ... });
+```
+
+Note that the `onmessage` property can only reference a single event listener for
+obvious reasons.
 
 ##### EventTarget::addEventListener
 
