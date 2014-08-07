@@ -117,7 +117,7 @@ if not connected.
 
 ##### LocalChannels::self
 
-	SelfChannel?  self();
+	SelfChannel? self();
 
 Returns the `SelfChannel` instance associated with this window. Returns `null` if not connected.
 
@@ -248,7 +248,7 @@ Get the properties map of this channel. A channel can set arbitrary properties (
 for application specific information/meta data. Property values can by any objects that
 survive a `JSON.stringify`/`JSON.parse` roundtrip.
 
-##### Channel::getProperties
+##### Channel::getProperty
 
 	any? getProperty(String name);
 
@@ -384,7 +384,7 @@ Initialize this event. Used by the constructor of derived event objects.
 
 ##### Event::type
 
-Event type. See below for possible values.
+Event type. See the subsections of the event interfaces for possible values.
 
 ##### Event::source
 
@@ -401,14 +401,14 @@ Arrival time of this event.
 
 ##### connect
 
-The `connect` event is dispatched to the `Channel` objects representing the channel that
-got connected and to the global `localChannels` objects in all windows except the one that
+A `connect` event is dispatched to all `Channel` objects representing channels that got
+connected and to the global `localChannels` objects in all windows except the one that
 is the source of this event.
 
 ##### disconnect
 
-The `disconnect` event is dispatched to the `Channel` objects representing the channel that
-got disconnected and to the global `localChannels` objects in all windows except the one that
+A `disconnect` event is dispatched to all `Channel` objects representing channels that got
+disconnected and to the global `localChannels` objects in all windows except the one that
 is the source of this event.
 
 #### PropertiesChangeEvent
@@ -424,9 +424,9 @@ The new properties map of the associated channel.
 
 ##### propertieschange
 
-The `propertieschange` event is dispatched to the `Channel` objects representing the channel that
-changed its properties and to the global `localChannels` objects in all windows except the one that
-is the source of this event.
+A `propertieschange` event is dispatched to all `Channel` objects representing the channel
+that changed its properties and to the global `localChannels` objects in all windows except
+the one that is the source of this event.
 
 #### BindingEvent
 
@@ -437,13 +437,13 @@ is the source of this event.
 
 ##### bind
 
-The `bind` event is dispatched to the `Channel` objects representing the channel that got bound
+A `bind` event is dispatched to the `Channel` object representing the channel that got bound
 to a name and to the global `localChannels` objects in all windows except the one that is the
 source of this event.
 
 ##### unbind
 
-The `unbind` event is dispatched to the `Channel` objects representing the channel that got unbound
+An `unbind` event is dispatched to the `Channel` object representing the channel that got unbound
 from a name and to the global `localChannels` objects in all windows except the one that is the
 source of this event.
 
@@ -460,13 +460,13 @@ The data sent via this message.
 
 ##### message
 
-The `message` event is dispatched to the `Channel` objects representing the channel that sent the
+A `message` event is dispatched to the `Channel` object representing the channel that sent the
 message and to the global `localChannels` objects in all windows except the one that is the
 source of this event.
 
 ### Local Storage Keys
 
-These local storage keys are used:
+These local storage keys are used by this library:
 
  * `localChannels.channels`: Array of channel IDs
  * `localChannels.bindings`: Object mapping bound names to channel IDs
