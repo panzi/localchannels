@@ -44,9 +44,9 @@ Why?
 
 I wrote this just for fun, just to find out if such a thing is possible. Normally you
 can only communicate to child or parent frames, windows you have opened and the opener
-of the current window (via `{iframe|parent|opener|top}.postMessage`). With this library
-you can communicate to all windows/frames from the same origin, no matter how they
-where opened.
+of the current window (via `{parent|opener|top|iframe.contentWindow}.postMessage`).
+With this library you can communicate to all windows/frames from the same origin, no
+matter how they where opened.
 
 I'm not sure if this is even of use to anyone. Usually you would implement something
 like this using web sockets or some other kind of server communication. Both approaches
