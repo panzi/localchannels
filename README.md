@@ -5,12 +5,12 @@ This library provides a way for browser windows opened from the same origin to c
 Normally you can only communicate to child or parent frames, windows you have opened and
 the opener of the current window (via `{parent|opener|top|iframe.contentWindow}.postMessage`).
 
-One could do basically the same thing using WebSockets, but this library doesn't need any
+One could do basically the same thing using web sockets, but this library doesn't need any
 server interaction after the web page is loaded. This means less opened connection/less
 server load, but it also means that only windows of the same browser on the same machine
 (and same origin) can communicate.
 
-This supports Internet Exporer 8+ and every modern browser that *correctly* implements
+This supports Internet Explorer 8+ and every modern browser that *correctly* implements
 HTML5 local storage including the storage event (e.g. Firefox, Chrome and Safari).
 
  * [Basic Usage](#basic-usage)
@@ -37,7 +37,7 @@ localChannels.addEventListener("connect", function (event) {
 });
 ```
 
-Message `data` can be anything that survives a `JSON.stringify`/`JSON.parse` roundtrip.
+Message `data` can be anything that survives a `JSON.stringify`/`JSON.parse` round trip.
 
 Why?
 ----
@@ -66,7 +66,7 @@ Con:
  * Only pages of the same origin can communicate. This means pages served via http
    cannot communicate to pages served via https and pages served from different
    sub-domains cannot communicate either. You could use an iframe of the correct
-   origin (and `iframe.contentWindow.postMessage`) to brige this, though.
+   origin (and `iframe.contentWindow.postMessage`) to bridge this, though.
 
 If you find this useful let me know. I don't think I bother writing tests if nobody finds
 this of any use.
@@ -77,7 +77,7 @@ I could imagine some kind of bookmarklet that lets you add links to some documen
 which you work on in a very application like web app. When you click the bookmarklet
 you might want to get a list of documents from which you can choose. You would like
 to have the currently open (and potentially unsaved) documents listed on top. And
-when you click add you want the open document reacto to it dynamically.
+when you click add you want the open document react to to it dynamically.
 
 The bookmarklet could use an iframe in order to communicate with all the other open
 windows.
@@ -215,7 +215,7 @@ Throws `TypeError` if not connected.
 		     raises(TypeError);
 
 `localChannels.postMessage` can be used to dispatch a message to all other windows.
-Message `data` can be anything that survives a `JSON.stringify`/`JSON.parse` roundtrip. If
+Message `data` can be anything that survives a `JSON.stringify`/`JSON.parse` round trip. If
 the `filter` parameter is provided it will only dispatch the message to channels for which
 it matches.
 
@@ -297,7 +297,7 @@ Returns an array of names that are bound to this channel.
 
 Get the properties map of this channel. A channel can set arbitrary properties (key-value-pairs)
 for application specific information/meta data. Property values can by any objects that
-survive a `JSON.stringify`/`JSON.parse` roundtrip.
+survive a `JSON.stringify`/`JSON.parse` round trip.
 
 ##### Channel::getProperty
 
@@ -315,22 +315,22 @@ Returns `true` if the property with given name is set, `false` otherwise.
 ##### Channel::postMessage
 
 Use this to dispatch a message to a certain channel. Message `data` can be anything that
-survives a `JSON.stringify`/`JSON.parse` roundtrip. You can also send a message to
+survives a `JSON.stringify`/`JSON.parse` round trip. You can also send a message to
 `localChannels.self()`. In that case the data parameter will not go through
 `JSON.stringify`/`JSON.parse` and has to remain valid until the message is dispatched,
-which still happens asynchrounously.
+which still happens asynchronously.
 
 **TDOD:** Maybe make a copy of the data parameter/pass it through `JSON.stringify`/`JSON.parse`
 anyway, so that the original value can be changed without unexpected side effects?
 
 #### SelfChannel
 
-`localChannels.self()` returns an object implenting this interface. This is the channel
+`localChannels.self()` returns an object implementing this interface. This is the channel
 that will be referred to as the source for all messages sent to other channels.
 
 You can also bind an arbitrary number of unique names to the self channel through which
 it can be addressed by other windows. You can also attach arbitrary properties to the
-self channel which other channels can query. Updating name bindings and properites will
+self channel which other channels can query. Updating name bindings and properties will
 dispatch bind, unbind and propertieschange events to the other windows.
 
 	[Constructor(unsigned int id)]
@@ -353,7 +353,7 @@ Sets the properties map of this channel to the passed `properties`.
 
 A channel can set arbitrary properties (key-value-pairs) for application specific
 information/meta data. Property values can by any objects that survive a
-`JSON.stringify`/`JSON.parse` roundtrip.
+`JSON.stringify`/`JSON.parse` round trip.
 
 ##### SelfChannel::setProperty
 
