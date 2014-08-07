@@ -2,15 +2,19 @@ Local Channels
 ==============
 
 This library provides a way for browser windows opened from the same origin to communicate.
-One could do basically the same thing using WebSockets, but this doesn't need any server
-interaction after the web page is loaded. This means less opened connection/less server
-load, but it also means that only windows of the same browser on the same machine can
-communicate.
+Normally you can only communicate to child or parent frames, windows you have opened and
+the opener of the current window (via `{parent|opener|top|iframe.contentWindow}.postMessage`).
+
+One could do basically the same thing using WebSockets, but this library doesn't need any
+server interaction after the web page is loaded. This means less opened connection/less
+server load, but it also means that only windows of the same browser on the same machine
+(and same origin) can communicate.
 
 This supports Internet Exporer 8+ and every modern browser that *correctly* implements
 HTML5 local storage including the storage event (e.g. Firefox, Chrome and Safari).
 
  * [Basic Usage](#basic-usage)
+ * [Why?](#why)
  * [TODO](#todo)
  * [Reference](#reference)
  * [License](#license)
@@ -34,6 +38,49 @@ localChannels.addEventListener("connect", function (event) {
 ```
 
 Message `data` can be anything that survives a `JSON.stringify`/`JSON.parse` roundtrip.
+
+Why?
+----
+
+I wrote this just for fun, just to find out if such a thing is possible. Normally you
+can only communicate to child or parent frames, windows you have opened and the opener
+of the current window (via `{iframe|parent|opener|top}.postMessage`). With this library
+you can communicate to all windows/frames from the same origin, no matter how they
+where opened.
+
+I'm not sure if this is even of use to anyone. Usually you would implement something
+like this using web sockets or some other kind of server communication. Both approaches
+have pros and cons, though.
+
+Pro:
+
+ * No connections to the server need to be kept alive.
+ * Works in Internet Explorer 8 and 9, which have no web socket support.
+ * Works offline.
+
+Con:
+
+ * Does only work within one browser instance (not cross browser, not cross machine,
+   not even between a normal and an incognito/private browsing window of the same
+   browser on the same machine).
+ * Only pages of the same origin can communicate. This means pages served via http
+   cannot communicate to pages served via https and pages served from different
+   sub-domains cannot communicate either. You could use an iframe of the correct
+   origin (and `iframe.contentWindow.postMessage`) to brige this, though.
+
+If you find this useful let me know. I don't think I bother writing tests if nobody finds
+this of any use.
+
+### Usage scenario
+
+I could imagine some kind of bookmarklet that lets you add links to some documents
+which you work on in a very application like web app. When you click the bookmarklet
+you might want to get a list of documents from which you can choose. You would like
+to have the currently open (and potentially unsaved) documents listed on top. And
+when you click add you want the open document reacto to it dynamically.
+
+The bookmarklet could use an iframe in order to communicate with all the other open
+windows.
 
 TODO
 ----
